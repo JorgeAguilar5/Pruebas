@@ -2,6 +2,9 @@ Texto agregado
 
 mas texto agregado
 
+
+perfecto
+
 firebase.auth().onAuthStateChanged(function(user) {
     if (user) {
       // User is signed in.
