@@ -1,0 +1,155 @@
+firebase.auth().onAuthStateChanged(function(user) {
+    if (user) {
+      // User is signed in.
+  
+      document.getElementById("user_div").style.display = "block";
+      document.getElementById("login_div").style.display = "none";
+  
+      var user = firebase.auth().currentUser;
+  
+      if(user != null){
+  
+        var email_id = user.email;
+      }
+  
+    } else {
+      // No user is signed in.
+      document.getElementById("user_div").style.display = "none";
+      document.getElementById("login_div").style.display = "block";
+  
+    }
+  });
+  
+  function login(){
+  
+    var userEmail = document.getElementById("email_field").value;
+    var userPass = document.getElementById("password_field").value;
+  
+    firebase.auth().signInWithEmailAndPassword(userEmail, userPass).catch(function(error) {
+      // Handle Errors here.
+      var errorCode = error.code;
+      var errorMessage = error.message;
+  
+      window.alert("Error : " + errorMessage);
+  
+      // ...
+    });
+  }
+  
+  // SignUp
+  const signUpForm = document.querySelector("#signup-form");
+  signUpForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const email = signUpForm["signup-email"].value;
+    const password = signUpForm["signup-password"].value;
+  
+    // Authenticate the User
+    auth
+      .createUserWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        // clear the form
+        signUpForm.reset();
+      });
+  });
+  
+  
+  function logout(){
+    firebase.auth().signOut();
+  }
+  
+  const db = firebase.firestore();
+  
+  const taskForm = document.getElementById("task-form");
+  const tasksContainer = document.getElementById("tasks-container");
+  
+  let editStatus = false;
+  let id = '';
+  
+  const saveTask = (title, description) =>
+    db.collection("posts").doc().set({
+      title,
+      description,
+    });
+  
+  const getTasks = () => db.collection("posts").get();
+  const onGetTasks = (callback) => db.collection("posts").onSnapshot(callback);
+  const deleteTask = (id) => db.collection("posts").doc(id).delete();
+  const getTask = (id) => db.collection("posts").doc(id).get();
+  const updateTask = (id, updatedTask) => db.collection('posts').doc(id).update(updatedTask);
+  
+  window.addEventListener("DOMContentLoaded", async (e) => {
+    onGetTasks((querySnapshot) => {
+      tasksContainer.innerHTML = "";
+  
+      querySnapshot.forEach((doc) => {
+        const post = doc.data();
+  
+        tasksContainer.innerHTML += `<div class="row">
+          <h3 class="h1">${post.title}</h3>
+          <p>${post.description}</p>
+          <div>
+          <button class="btn btn-delete" data-id="${doc.id}">Borrar</button>
+          <button class="btn btn-edit" data-id="${doc.id}">Editar</button>
+          </div>
+          </div>`;
+      });
+  
+      const btnsDelete = tasksContainer.querySelectorAll(".btn-delete");
+      btnsDelete.forEach((btn) =>
+        btn.addEventListener("click", async (e) => {
+          console.log(e.target.dataset.id);
+          try {
+            await deleteTask(e.target.dataset.id);
+          } catch (error) {
+            console.log(error);
+          }
+        })
+      );
+  
+      const btnsEdit = tasksContainer.querySelectorAll(".btn-edit");
+      btnsEdit.forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          try {
+            const doc = await getTask(e.target.dataset.id);
+            const post = doc.data();
+            taskForm["task-title"].value = post.title;
+            taskForm["task-description"].value = post.description;
+  
+            editStatus = true;
+            id = doc.id;
+            taskForm["btn-task-form"].innerText = "Actualizar";
+  
+          } catch (error) {
+            console.log(error);
+          }
+        });
+      });
+    });
+  });
+  
+  taskForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+  
+    const title = taskForm["task-title"];
+    const description = taskForm["task-description"];
+  
+    try {
+      if (!editStatus) {
+        await saveTask(title.value, description.value);
+      } else {
+        await updateTask(id, {
+          title: title.value,
+          description: description.value,
+        })
+  
+        editStatus = false;
+        id = '';
+        taskForm['btn-task-form'].innerText = 'Guardar';
+      }
+  
+      taskForm.reset();
+      title.focus();
+    } catch (error) {
+      console.log(error);
+    }
+  });
